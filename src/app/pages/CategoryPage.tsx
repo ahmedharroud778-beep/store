@@ -79,13 +79,13 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>{t('common.back')}</span>
+              <span className="hidden sm:inline">{t('common.back')}</span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -139,13 +139,13 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 min-w-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
               <Icon className="w-8 h-8 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1
-                className="animate-in fade-in slide-in-from-bottom duration-700"
+                className="animate-in fade-in slide-in-from-bottom duration-700 truncate"
                 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 700 }}
               >
                 {categoryData.title}

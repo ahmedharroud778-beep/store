@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiJson } from "../utils/api";
+import { apiJson, resolveAssetUrl } from "../utils/api";
 
 export interface StoreProduct {
   id: number;
@@ -11,6 +11,20 @@ export interface StoreProduct {
   description: string;
   images: string[];
   details: Record<string, any>;
+}
+
+function normalizeProductAssets(product: StoreProduct): StoreProduct {
+  const normalizedImages = Array.isArray(product.images)
+    ? product.images.map((value) => resolveAssetUrl(String(value || ""))).filter(Boolean)
+    : [];
+  const normalizedMainImage =
+    resolveAssetUrl(product.image) || normalizedImages[0] || "";
+
+  return {
+    ...product,
+    image: normalizedMainImage,
+    images: normalizedImages.length > 0 ? normalizedImages : normalizedMainImage ? [normalizedMainImage] : [],
+  };
 }
 
 export function getTotalStock(product: StoreProduct) {
@@ -46,7 +60,8 @@ export function useProducts() {
     apiJson<StoreProduct[]>("/api/products")
       .then((data: StoreProduct[]) => {
         if (!mounted) return;
-        setProducts(Array.isArray(data) ? data : []);
+        const normalizedProducts = Array.isArray(data) ? data.map(normalizeProductAssets) : [];
+        setProducts(normalizedProducts);
         setError(null);
       })
       .catch((err: Error) => {

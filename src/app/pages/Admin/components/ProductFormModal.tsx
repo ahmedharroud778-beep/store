@@ -19,10 +19,11 @@ interface Props {
   product: Product | null;
   categories: StoreCategory[];
   onSave: (payload: FormData) => void;
+  isSaving?: boolean;
   onClose: () => void;
 }
 
-export function ProductFormModal({ product, categories, onSave, onClose }: Props) {
+export function ProductFormModal({ product, categories, onSave, isSaving = false, onClose }: Props) {
   const { t } = useLanguage();
   const [formData, setFormData] = useState<Product>(
     product || {
@@ -269,12 +270,12 @@ export function ProductFormModal({ product, categories, onSave, onClose }: Props
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => !isSaving && onClose()}>
       <div className="min-h-full w-full flex items-start justify-center p-4 py-8">
         <div className="bg-card rounded-2xl p-6 max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem" }}>{product ? t("admin.editProduct") : t("admin.addProduct")}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center">
+          <button onClick={onClose} disabled={isSaving} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center disabled:opacity-50">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -608,11 +609,11 @@ export function ProductFormModal({ product, categories, onSave, onClose }: Props
           </div>
 
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-full bg-muted hover:bg-muted/70 transition-all">
+            <button type="button" onClick={onClose} disabled={isSaving} className="flex-1 py-3 rounded-full bg-muted hover:bg-muted/70 transition-all disabled:opacity-50">
               {t("admin.cancel")}
             </button>
-            <button type="submit" className="flex-1 py-3 rounded-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all">
-              {t("admin.save")}
+            <button type="submit" disabled={isSaving} className="flex-1 py-3 rounded-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-50">
+              {isSaving ? "Saving..." : t("admin.save")}
             </button>
           </div>
         </form>

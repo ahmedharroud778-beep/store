@@ -56,8 +56,8 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
 
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors lg:hidden"
@@ -70,20 +70,20 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <h1
-                  className="hidden sm:block"
-                  style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 600 }}
+                  className="block truncate max-w-[140px] sm:max-w-none"
+                  style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1rem, 4vw, 1.75rem)", fontWeight: 600 }}
                 >
-                  {t("header.store")}
+                  {SITE_CONFIG.storeName}
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <ThemeToggle />
               <LanguageSwitcher />
 
@@ -96,10 +96,10 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
 
               <button
                 onClick={() => cartCount > 0 && setShowCheckout(true)}
-                className="relative bg-primary text-primary-foreground px-6 py-3 rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2"
+                className="relative bg-primary text-primary-foreground px-3 sm:px-6 py-2.5 sm:py-3 rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2"
               >
                 <ShoppingBag className="w-5 h-5" />
-                <span className="hidden sm:inline">{t("header.cart")}</span>
+                <span className="hidden md:inline">{t("header.cart")}</span>
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 w-6 h-6 bg-secondary text-white rounded-full flex items-center justify-center text-sm animate-in zoom-in">
                     {cartCount}
@@ -144,7 +144,7 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <a
-                href={createWhatsAppLink("Hello, I want to ask about products on Noor Store.")}
+                href={createWhatsAppLink(`Hello, I want to ask about products on ${SITE_CONFIG.storeName}.`)}
                 target="_blank"
                 rel="noreferrer"
                 className="bg-primary text-primary-foreground px-6 py-3 rounded-full hover:bg-accent hover:text-accent-foreground transition-all"
@@ -189,13 +189,13 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
             className={`py-16 px-4 ${sectionIndex % 2 === 1 ? "bg-muted/30" : ""}`}
           >
             <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-12 h-12 ${isHandmade ? "bg-secondary/20" : "bg-primary/10"} rounded-full flex items-center justify-center`}>
                     <Icon className={`w-6 h-6 ${isHandmade ? "text-secondary" : "text-primary"}`} />
                   </div>
-                  <div>
-                    <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "2rem", fontWeight: 600 }}>
+                  <div className="min-w-0">
+                    <h2 className="truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.35rem, 4vw, 2rem)", fontWeight: 600 }}>
                       {section.name}
                     </h2>
                     <p className="text-muted-foreground">
@@ -207,7 +207,7 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
                 </div>
                 <a
                   href={`/category/${section.slug}`}
-                  className={`${isHandmade ? "text-secondary hover:text-primary" : "text-primary hover:text-accent"} transition-colors text-sm font-medium`}
+                  className={`${isHandmade ? "text-secondary hover:text-primary" : "text-primary hover:text-accent"} transition-colors text-sm font-medium self-start sm:self-auto`}
                 >
                   {t('menu.viewAll')}
                 </a>
@@ -272,7 +272,7 @@ export function Home({ cart, onAddToCart, onClearCart }: HomeProps) {
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 600 }}>Noor Store</h3>
+            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 600 }}>{SITE_CONFIG.storeName}</h3>
           </div>
           <p className="text-muted-foreground mb-2">{t("common.tagline")}</p>
           <p className="text-muted-foreground mb-2">{SITE_CONFIG.phoneNumber} · {SITE_CONFIG.city}</p>

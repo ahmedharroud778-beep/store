@@ -184,7 +184,7 @@ export function ProductDetail({ onAddToCart }: ProductDetailProps) {
               className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Store</span>
+              <span className="hidden sm:inline">Back to Store</span>
             </button>
 
             <ThemeToggle />
@@ -336,7 +336,7 @@ export function ProductDetail({ onAddToCart }: ProductDetailProps) {
             {needsSize && (
               <div className="space-y-3">
                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.125rem' }}>Select Size *</h3>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {sizeOptions.map((sizeOption) => (
                     <button
                       key={sizeOption.value}

@@ -29,6 +29,32 @@ function buildCandidates(path: string) {
   return [...new Set(candidates)];
 }
 
+function getApiBase() {
+  if (explicitApiBase) return explicitApiBase;
+  return getLocalBackendBase();
+}
+
+function isAbsoluteUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
+export function resolveAssetUrl(value?: string) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  if (isAbsoluteUrl(normalized) || normalized.startsWith("data:") || normalized.startsWith("blob:")) {
+    return normalized;
+  }
+
+  const apiBase = getApiBase();
+  if (!apiBase) return normalized;
+
+  if (normalized.startsWith("/")) {
+    return `${apiBase}${normalized}`;
+  }
+
+  return `${apiBase}/${normalized.replace(/^\/+/, "")}`;
+}
+
 async function attemptRequest(
   url: string,
   init: RequestInit,

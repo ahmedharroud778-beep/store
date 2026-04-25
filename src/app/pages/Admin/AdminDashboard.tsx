@@ -7,6 +7,7 @@ import { curatedProducts, handmadeProducts, Product } from "../../data/products"
 import { ThemeToggle } from "../../components/ThemeToggle";
 import useAdminAuth from "../../../hooks/useAdminAuth";
 import { fetchProtected } from "../../../utils/adminApi";
+import { resolveAssetUrl } from "../../../utils/api";
 import { AdminProductsPanel } from "./panels/AdminProductsPanel";
 import { AdminOrdersPanel, type Order } from "./panels/AdminOrdersPanel";
 import { AdminCustomRequestsPanel, type CustomRequest } from "./panels/AdminCustomRequestsPanel";
@@ -266,7 +267,20 @@ export function AdminDashboard() {
     }, [activeTab]);
   const [showProductForm, setShowProductForm] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const normalizeProductForUi = (rawProduct: Product): Product => {
+    const normalizedImages = Array.isArray(rawProduct.images)
+      ? rawProduct.images.map((value) => resolveAssetUrl(String(value || ""))).filter(Boolean)
+      : [];
+    const normalizedImage = resolveAssetUrl(rawProduct.image) || normalizedImages[0] || "";
+    return {
+      ...rawProduct,
+      image: normalizedImage,
+      images: normalizedImages.length > 0 ? normalizedImages : normalizedImage ? [normalizedImage] : [],
+    };
+  };
 
   const clearOrdersDateRange = () => {
     setOrdersDateFrom("");
@@ -324,10 +338,11 @@ export function AdminDashboard() {
         // expects server route GET /admin-api/protected/products
         const serverProducts = await fetchProtected("/products");
         if (Array.isArray(serverProducts)) {
-          setProducts(serverProducts);
+          const normalizedServerProducts = serverProducts.map(normalizeProductForUi);
+          setProducts(normalizedServerProducts);
           // keep a local cache for offline/dev fallback
           try {
-            localStorage.setItem("baraa-products", JSON.stringify(serverProducts));
+            localStorage.setItem("baraa-products", JSON.stringify(normalizedServerProducts));
           } catch {}
         } else {
           throw new Error("Invalid products response");
@@ -784,39 +799,40 @@ export function AdminDashboard() {
             details: {},
           };
     // If editingProduct exists -> update, else create
+    setSavingProduct(true);
+    try {
     if (editingProduct) {
       // Try server update (PUT)
       try {
         // expects server route PUT /admin-api/protected/products/:id
-        await fetchProtected(`/products/${editingProduct.id}`, {
+        const updatedFromServer = await fetchProtected(`/products/${editingProduct.id}`, {
           method: "PUT",
           body: productFormData,
         });
-        // refresh from server
-        try {
-          const serverProducts = await fetchProtected("/products");
-          setProducts(serverProducts);
-          localStorage.setItem("baraa-products", JSON.stringify(serverProducts));
-        } catch {
-          // fallback to local update
-          const updatedProduct = {
-            ...editingProduct,
-            ...parsedPayload,
-            image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || editingProduct.image,
-            images: Array.isArray(parsedPayload.images) ? parsedPayload.images : editingProduct.images,
-          };
-          const updated = products.map((p) => (p.id === editingProduct.id ? updatedProduct : p));
-          setProducts(updated);
-          localStorage.setItem("baraa-products", JSON.stringify(updated));
-        }
+        const updatedProduct = normalizeProductForUi(
+          updatedFromServer && updatedFromServer.id
+            ? updatedFromServer
+            : {
+                ...editingProduct,
+                ...parsedPayload,
+                image:
+                  parsedPayload.images?.[parsedPayload.mainImageIndex || 0] ||
+                  parsedPayload.images?.[0] ||
+                  editingProduct.image,
+                images: Array.isArray(parsedPayload.images) ? parsedPayload.images : editingProduct.images,
+              },
+        );
+        const updated = products.map((p) => (p.id === editingProduct.id ? updatedProduct : p));
+        setProducts(updated);
+        localStorage.setItem("baraa-products", JSON.stringify(updated));
       } catch (err) {
         console.warn("Server update failed, updating locally:", err);
-        const updatedProduct = {
+        const updatedProduct = normalizeProductForUi({
           ...editingProduct,
           ...parsedPayload,
           image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || editingProduct.image,
           images: Array.isArray(parsedPayload.images) ? parsedPayload.images : editingProduct.images,
-        };
+        });
         const updated = products.map((p) => (p.id === editingProduct.id ? updatedProduct : p));
         setProducts(updated);
         try {
@@ -833,36 +849,20 @@ export function AdminDashboard() {
         });
         // If server returns created product, refresh or append
         if (created && created.id) {
-          try {
-            const serverProducts = await fetchProtected("/products");
-            setProducts(serverProducts);
-            localStorage.setItem("baraa-products", JSON.stringify(serverProducts));
-          } catch {
-            // append locally if refresh fails
-            const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
-            const appended = [
-              ...products,
-              {
-                ...parsedPayload,
-                id: newId,
-                image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || "",
-                images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
-              },
-            ];
-            setProducts(appended);
-            localStorage.setItem("baraa-products", JSON.stringify(appended));
-          }
+          const appended = [...products, normalizeProductForUi(created)];
+          setProducts(appended);
+          localStorage.setItem("baraa-products", JSON.stringify(appended));
         } else {
           // server didn't return created object; fallback to local
           const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
           const appended = [
             ...products,
-            {
+            normalizeProductForUi({
               ...parsedPayload,
               id: newId,
               image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || "",
               images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
-            },
+            }),
           ];
           setProducts(appended);
           localStorage.setItem("baraa-products", JSON.stringify(appended));
@@ -872,12 +872,12 @@ export function AdminDashboard() {
         const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
         const appended = [
           ...products,
-          {
+          normalizeProductForUi({
             ...parsedPayload,
             id: newId,
             image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || "",
             images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
-          },
+          }),
         ];
         setProducts(appended);
         try {
@@ -888,6 +888,9 @@ export function AdminDashboard() {
 
     setEditingProduct(null);
     setShowProductForm(false);
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
   const filteredActiveOrders = orders.filter((order) => {
@@ -1482,7 +1485,9 @@ export function AdminDashboard() {
           product={editingProduct}
           categories={categoriesTree}
           onSave={handleSaveProduct}
+          isSaving={savingProduct}
           onClose={() => {
+            if (savingProduct) return;
             setShowProductForm(false);
             setEditingProduct(null);
           }}
