@@ -24,6 +24,7 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
   const { products, loading, error } = useProducts();
   const { categoriesTree } = useCategories();
 
+  // Move this above all hooks that use its result!
   const getCategoryData = () => {
     const mainCategory = categoriesTree.find((item) => item.slug === category);
     if (!mainCategory) return null;
@@ -54,6 +55,7 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
 
   const categoryData = getCategoryData();
 
+  // Move this check BEFORE any hooks that use categoryData!
   if (!categoryData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -72,6 +74,7 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
     );
   }
 
+  // Now it's safe to use hooks that depend on categoryData
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const min = minPrice.trim() === '' ? null : Number(minPrice);
