@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1777050506700",
+    "createdAt": "2026-04-24T17:08:26.700Z",
+    "status": "new",
+    "source": "website",
+    "customer": {
+      "email": "ahmed@example.com",
+      "notes": "test note",
+      "name": "Ahmed",
+      "phone": "1234567",
+      "city": "Tripoli"
+    },
+    "type": "custom-request",
+    "product": {
+      "uploadedFileNames": [
+        "photo1.jpg"
+      ],
+      "description": "Integration test request",
+      "website": "Shein",
+      "quantity": 1
+    }
+  }
+]

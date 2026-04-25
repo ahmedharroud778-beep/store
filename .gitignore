@@ -1,0 +1,10 @@
+node_modules/
+server/node_modules/
+dist/
+.env
+.env.local
+server/.env
+server/.env.local
+*.db
+*.sqlite
+*.sqlite3
