@@ -61,6 +61,28 @@ interface Props {
   onRenameCategory: (id: number, name: string) => Promise<void>;
 }
 
+function getProductTotalStock(product: Product) {
+  const details = product?.details && typeof product.details === "object" ? product.details : {};
+  const sizeStock = (details as any)?.sizeStock;
+  const colorStock = (details as any)?.colorStock;
+
+  const stockSource =
+    sizeStock && typeof sizeStock === "object"
+      ? sizeStock
+      : colorStock && typeof colorStock === "object"
+        ? colorStock
+        : null;
+
+  if (!stockSource) return null;
+
+  const values = Object.values(stockSource)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
 export function AdminProductsPanel({
   products,
   mainCategories,
@@ -596,7 +618,32 @@ function ProductListView({
               <div key={product.id} className="bg-card border border-border rounded-lg p-4 flex items-center gap-4">
                 <img src={product.image} alt={product.name} className="w-20 h-20 object-cover rounded-lg" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{product.name}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="font-medium truncate">{product.name}</h3>
+                    {(() => {
+                      const totalStock = getProductTotalStock(product);
+                      if (totalStock === null) return null;
+                      if (totalStock <= 0) {
+                        return (
+                          <span className="px-2 py-1 rounded-full text-[11px] bg-destructive/10 text-destructive whitespace-nowrap">
+                            Out of stock
+                          </span>
+                        );
+                      }
+                      if (totalStock <= 3) {
+                        return (
+                          <span className="px-2 py-1 rounded-full text-[11px] bg-amber-500/15 text-amber-700 whitespace-nowrap">
+                            Low stock: {totalStock}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="px-2 py-1 rounded-full text-[11px] bg-emerald-500/15 text-emerald-700 whitespace-nowrap">
+                          In stock: {totalStock}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">
                     {product.category}
                     {product.subcategory ? ` / ${product.subcategory}` : ""}

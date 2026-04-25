@@ -5,19 +5,31 @@ import bcrypt from "bcryptjs";
 const router = express.Router();
 
 const DEFAULT_SECRET = "change_this_secret";
-const SECRET = process.env.ADMIN_JWT_SECRET || DEFAULT_SECRET;
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const SECRET = String(process.env.ADMIN_JWT_SECRET || "").trim();
+const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || "").trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
+const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
-// Warn loudly if the default JWT secret is still in use
-if (SECRET === DEFAULT_SECRET) {
-  console.warn(
-    "\n⚠️  WARNING: ADMIN_JWT_SECRET is using the default value.\n" +
-    "   Set a strong, unique secret in your server/.env file before going to production.\n"
+if (!SECRET || !ADMIN_USERNAME || !ADMIN_PASSWORD) {
+  throw new Error(
+    "Missing required admin env vars. Set ADMIN_USERNAME, ADMIN_PASSWORD, and ADMIN_JWT_SECRET.",
   );
 }
 
-// Pre-hash the admin password at startup so we never compare plaintext
+if (SECRET === DEFAULT_SECRET) {
+  throw new Error(
+    "ADMIN_JWT_SECRET is using an insecure default value. Set a strong secret before starting the server.",
+  );
+}
+
+if (isProduction) {
+  if (ADMIN_USERNAME.toLowerCase() === "admin" || ADMIN_PASSWORD === "admin123") {
+    throw new Error(
+      "Insecure default admin credentials are not allowed in production. Change ADMIN_USERNAME and ADMIN_PASSWORD.",
+    );
+  }
+}
+
 const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
 
 router.post("/login", (req, res) => {

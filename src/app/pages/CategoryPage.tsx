@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, ShoppingBag, Heart, Search, X, ChevronRight } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { useProducts } from '../../hooks/useProducts';
+import { getTotalStock, useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -17,6 +17,10 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'name-asc'>('featured');
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const { products, loading, error } = useProducts();
   const { categoriesTree } = useCategories();
 
@@ -68,9 +72,32 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
     );
   }
 
-  const filteredProducts = categoryData.products.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const min = minPrice.trim() === '' ? null : Number(minPrice);
+    const max = maxPrice.trim() === '' ? null : Number(maxPrice);
+
+    const base = categoryData.products.filter((product) => {
+      if (query && !String(product.name || '').toLowerCase().includes(query)) return false;
+      if (Number.isFinite(min as number) && Number(product.price || 0) < (min as number)) return false;
+      if (Number.isFinite(max as number) && Number(product.price || 0) > (max as number)) return false;
+      if (inStockOnly) {
+        const stock = getTotalStock(product as any);
+        if (stock !== null && stock <= 0) return false;
+      }
+      return true;
+    });
+
+    const sorted = [...base];
+    if (sortBy === 'price-asc') {
+      sorted.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    } else if (sortBy === 'price-desc') {
+      sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    } else if (sortBy === 'name-asc') {
+      sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+    return sorted;
+  }, [categoryData.products, inStockOnly, maxPrice, minPrice, searchQuery, sortBy]);
 
   const Icon = categoryData.icon;
 
@@ -164,6 +191,57 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
       {/* Products Grid */}
       <section className="py-16 px-4">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-6 bg-card border border-border rounded-2xl p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')}
+                className="px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="featured">Sort: Featured</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="name-asc">Name: A-Z</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                placeholder="Min price"
+                className="px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <input
+                type="number"
+                min="0"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                placeholder="Max price"
+                className="px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <label className="flex items-center gap-2 px-4 py-3 rounded-lg border border-border bg-input-background">
+                <input
+                  type="checkbox"
+                  checked={inStockOnly}
+                  onChange={(e) => setInStockOnly(e.target.checked)}
+                />
+                <span className="text-sm">In stock only</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortBy('featured');
+                  setInStockOnly(false);
+                  setMinPrice('');
+                  setMaxPrice('');
+                }}
+                className="px-4 py-3 rounded-lg bg-muted hover:bg-muted/70 transition-colors"
+              >
+                Reset filters
+              </button>
+            </div>
+          </div>
+
           {loading && <p className="text-center text-muted-foreground mb-6">Loading products...</p>}
           {error && <p className="text-center text-destructive mb-6">{error}</p>}
           {filteredProducts.length === 0 ? (

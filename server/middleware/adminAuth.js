@@ -2,13 +2,14 @@
 import jwt from "jsonwebtoken";
 
 const DEFAULT_SECRET = "change_this_secret";
-const SECRET = process.env.ADMIN_JWT_SECRET || DEFAULT_SECRET;
+const SECRET = String(process.env.ADMIN_JWT_SECRET || "").trim();
+
+if (!SECRET) {
+  throw new Error("Missing ADMIN_JWT_SECRET. Set it before starting the server.");
+}
 
 if (SECRET === DEFAULT_SECRET) {
-  console.warn(
-    "\n⚠️  WARNING: ADMIN_JWT_SECRET is using the default value in adminAuth middleware.\n" +
-    "   Set a strong, unique secret in your server/.env file before going to production.\n"
-  );
+  throw new Error("ADMIN_JWT_SECRET is using an insecure default value. Set a strong secret.");
 }
 
 export function adminAuth(req, res, next) {

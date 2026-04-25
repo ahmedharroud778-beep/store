@@ -36,6 +36,7 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const itemCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const total = cart.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
@@ -61,6 +62,11 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
     e.preventDefault();
     setSubmitError('');
 
+    if (cart.length === 0) {
+      setSubmitError('Your cart is empty. Add products before checkout.');
+      return;
+    }
+
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (phoneDigits.length < 6) {
       setSubmitError('Please enter a valid phone number so we can contact you.');
@@ -78,6 +84,7 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
     };
 
     const persistOrder = async () => {
+      setIsSubmitting(true);
       let finalOrderId = order.id;
 
       try {
@@ -90,8 +97,16 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
         if (body?.orderId) {
           finalOrderId = String(body.orderId);
         }
-      } catch {
-        // Local fallback keeps checkout working if the backend is unavailable.
+      } catch (error: any) {
+        const maybeResponse = error?.response as Response | undefined;
+        if (maybeResponse) {
+          const body = await maybeResponse.json().catch(() => ({}));
+          setSubmitError(String(body?.error || 'Checkout failed. Please try again.'));
+        } else {
+          setSubmitError(String(error?.message || 'Checkout failed. Please try again.'));
+        }
+        setIsSubmitting(false);
+        return;
       }
 
       const savedOrders = localStorage.getItem('baraa-orders');
@@ -102,6 +117,7 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
       setSubmittedOrderId(finalOrderId);
       setIsSubmitted(true);
       onClearCart();
+      setIsSubmitting(false);
     };
 
     void persistOrder();
@@ -336,23 +352,29 @@ export function CheckoutForm({ cart, onClose, onClearCart }: CheckoutFormProps) 
             <p>{SITE_CONFIG.checkoutMessage}</p>
           </div>
 
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+          {submitError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+              <p className="text-sm text-destructive">{submitError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-muted text-foreground py-4 rounded-full hover:bg-muted/70 transition-all duration-200"
+              disabled={isSubmitting}
+              className="flex-1 bg-muted text-foreground py-4 rounded-full hover:bg-muted/70 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ fontSize: '1.125rem' }}
             >
               {t('checkout.cancel')}
             </button>
             <button
               type="submit"
-              className="flex-1 bg-primary text-primary-foreground py-4 rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+              disabled={isSubmitting}
+              className="flex-1 bg-primary text-primary-foreground py-4 rounded-full hover:bg-accent hover:text-accent-foreground transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ fontSize: '1.125rem' }}
             >
-              {t('checkout.place')}
+              {isSubmitting ? 'Placing order...' : t('checkout.place')}
             </button>
           </div>
         </form>

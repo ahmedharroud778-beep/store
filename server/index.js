@@ -62,6 +62,14 @@ const customRequestLimiter = rateLimit({
   message: { error: "Too many custom requests. Please try again in 15 minutes." },
 });
 
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again in 15 minutes." },
+});
+
 await ensureDataFiles();
 
 const existingProducts = await readProducts();
@@ -163,6 +171,23 @@ function sanitizeItem(raw) {
     quantity: Math.max(1, Math.min(100, Math.floor(Number(obj.quantity) || 1))),
   };
 }
+
+function getStockValueAndKey(stockMap, selectedOption) {
+  if (!stockMap || typeof stockMap !== "object") return null;
+  const option = String(selectedOption || "").trim();
+  if (!option) return null;
+
+  if (Object.prototype.hasOwnProperty.call(stockMap, option)) {
+    const value = Number(stockMap[option]);
+    return Number.isFinite(value) ? { key: option, value } : { key: option, value: 0 };
+  }
+
+  const match = Object.keys(stockMap).find((entry) => entry.toLowerCase() === option.toLowerCase());
+  if (!match) return { key: option, value: 0 };
+
+  const value = Number(stockMap[match]);
+  return Number.isFinite(value) ? { key: match, value } : { key: match, value: 0 };
+}
 // ────────────────────────────────────────────────────────────────────────
 
 app.post("/api/checkout", checkoutLimiter, async (req, res) => {
@@ -189,7 +214,70 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
     return res.status(400).json({ error: "Too many items in cart." });
   }
 
-  const items = rawItems.map(sanitizeItem);
+  const requestedItems = rawItems.map(sanitizeItem);
+  const products = await readProducts();
+  const nextProducts = products.map((product) => ({
+    ...product,
+    details: product?.details && typeof product.details === "object" ? { ...product.details } : {},
+  }));
+  const productsById = new Map(nextProducts.map((product) => [Number(product.id), product]));
+  const items = [];
+  let stockWasUpdated = false;
+
+  for (const requestItem of requestedItems) {
+    const canonicalProduct = productsById.get(Number(requestItem.id));
+    if (!canonicalProduct) {
+      return res.status(400).json({ error: `Invalid product in cart: ${requestItem.id}` });
+    }
+
+    const sizeStockMatch = getStockValueAndKey(canonicalProduct?.details?.sizeStock, requestItem.size);
+    const colorStockMatch = getStockValueAndKey(canonicalProduct?.details?.colorStock, requestItem.color);
+    const stockCandidates = [sizeStockMatch?.value, colorStockMatch?.value].filter(
+      (value) => typeof value === "number" && Number.isFinite(value),
+    );
+    const availableStock = stockCandidates.length > 0 ? Math.min(...stockCandidates) : null;
+
+    if (availableStock !== null && requestItem.quantity > availableStock) {
+      return res.status(400).json({
+        error: `Not enough stock for ${canonicalProduct.name}. Available: ${Math.max(0, availableStock)}.`,
+      });
+    }
+
+    items.push({
+      ...requestItem,
+      name: sanitizeString(canonicalProduct.name, 300),
+      price: Math.max(0, Number(canonicalProduct.price) || 0),
+      image: sanitizeString(canonicalProduct.image, 1000),
+      category: sanitizeString(canonicalProduct.category, 200),
+    });
+
+    if (sizeStockMatch) {
+      if (!canonicalProduct.details || typeof canonicalProduct.details !== "object") canonicalProduct.details = {};
+      if (!canonicalProduct.details.sizeStock || typeof canonicalProduct.details.sizeStock !== "object") {
+        canonicalProduct.details.sizeStock = {};
+      }
+      const current = Number(canonicalProduct.details.sizeStock[sizeStockMatch.key] ?? 0);
+      canonicalProduct.details.sizeStock[sizeStockMatch.key] = Math.max(
+        0,
+        (Number.isFinite(current) ? current : 0) - requestItem.quantity,
+      );
+      stockWasUpdated = true;
+    }
+
+    if (colorStockMatch) {
+      if (!canonicalProduct.details || typeof canonicalProduct.details !== "object") canonicalProduct.details = {};
+      if (!canonicalProduct.details.colorStock || typeof canonicalProduct.details.colorStock !== "object") {
+        canonicalProduct.details.colorStock = {};
+      }
+      const current = Number(canonicalProduct.details.colorStock[colorStockMatch.key] ?? 0);
+      canonicalProduct.details.colorStock[colorStockMatch.key] = Math.max(
+        0,
+        (Number.isFinite(current) ? current : 0) - requestItem.quantity,
+      );
+      stockWasUpdated = true;
+    }
+  }
+
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const paymentMethod = customer.paymentMethod;
 
@@ -208,6 +296,9 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
   const orders = await readOrders();
   orders.push(order);
   await writeOrders(orders);
+  if (stockWasUpdated) {
+    await writeProducts(nextProducts);
+  }
   res.json({ success: true, orderId: order.id });
 });
 
@@ -266,6 +357,7 @@ app.post("/api/custom-request", customRequestLimiter, upload.array("images", 5),
   res.json({ success: true, requestId: customRequest.id, images: imageUrls });
 });
 
+app.use("/admin-api/login", adminLoginLimiter);
 app.use("/admin-api", adminRouter);
 app.use("/admin-api/protected", adminAuth, protectedAdminRouter);
 
