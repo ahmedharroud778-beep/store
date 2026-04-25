@@ -24,8 +24,7 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
   const { products, loading, error } = useProducts();
   const { categoriesTree } = useCategories();
 
-  // Move this above all hooks that use its result!
-  const getCategoryData = () => {
+  const categoryData = useMemo(() => {
     const mainCategory = categoriesTree.find((item) => item.slug === category);
     if (!mainCategory) return null;
 
@@ -38,7 +37,6 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
     const subtitle = childCategory ? `Inside ${mainCategory.name}` : `Browse everything in ${mainCategory.name}`;
     const icon = String(mainCategory.name).toLowerCase().includes('handmade') ? Heart : ShoppingBag;
 
-    // Filter by subcategory if provided
     const visibleProducts = childCategory
       ? baseProducts.filter((p) => p.subcategory === childCategory.name)
       : baseProducts;
@@ -51,36 +49,15 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
       icon,
       products: visibleProducts,
     };
-  };
+  }, [categoriesTree, category, products, subcategory]);
 
-  const categoryData = getCategoryData();
-
-  // Move this check BEFORE any hooks that use categoryData!
-  if (!categoryData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="mb-4" style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem' }}>
-            {t('common.notFound')}
-          </h2>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-primary text-primary-foreground px-6 py-3 rounded-full hover:bg-accent hover:text-accent-foreground transition-all"
-          >
-            {t('common.backHome')}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Now it's safe to use hooks that depend on categoryData
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const min = minPrice.trim() === '' ? null : Number(minPrice);
     const max = maxPrice.trim() === '' ? null : Number(maxPrice);
 
-    const base = categoryData.products.filter((product) => {
+    const baseProducts = categoryData?.products ?? [];
+    const base = baseProducts.filter((product) => {
       if (query && !String(product.name || '').toLowerCase().includes(query)) return false;
       if (Number.isFinite(min as number) && Number(product.price || 0) < (min as number)) return false;
       if (Number.isFinite(max as number) && Number(product.price || 0) > (max as number)) return false;
@@ -100,7 +77,28 @@ export function CategoryPage({ onAddToCart }: CategoryPageProps) {
       sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }
     return sorted;
-  }, [categoryData.products, inStockOnly, maxPrice, minPrice, searchQuery, sortBy]);
+  }, [categoryData?.products, inStockOnly, maxPrice, minPrice, searchQuery, sortBy]);
+
+  if (!categoryData) {
+    const isInitialLoading = loading || categoriesTree.length === 0;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="mb-4" style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem' }}>
+            {isInitialLoading ? t('common.loading') : t('common.notFound')}
+          </h2>
+          {!isInitialLoading && (
+            <button
+              onClick={() => navigate('/')}
+              className="bg-primary text-primary-foreground px-6 py-3 rounded-full hover:bg-accent hover:text-accent-foreground transition-all"
+            >
+              {t('common.backHome')}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const Icon = categoryData.icon;
 
