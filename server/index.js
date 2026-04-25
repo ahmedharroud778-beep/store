@@ -267,7 +267,7 @@ app.get("/admin-api/protected/stats", adminAuth, async (_req, res) => {
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../dist");
   app.use(express.static(distPath));
-  app.get("*", (_req, res) => {
+  app.use((_req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });
 }
