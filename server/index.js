@@ -1,5 +1,5 @@
 import express from "express";
-import upload from "./lib/upload.js";
+import upload, { UPLOADS_DIR } from "./lib/upload.js";
 import cors from "cors";
 import helmet from "helmet";
 import path from "path";
@@ -27,7 +27,7 @@ const app = express();
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // Rate limiters for public-facing mutation endpoints
 const checkoutLimiter = rateLimit({

@@ -798,13 +798,9 @@ export function AdminDashboard() {
             images: [],
             details: {},
           };
-    // If editingProduct exists -> update, else create
     setSavingProduct(true);
     try {
-    if (editingProduct) {
-      // Try server update (PUT)
-      try {
-        // expects server route PUT /admin-api/protected/products/:id
+      if (editingProduct) {
         const updatedFromServer = await fetchProtected(`/products/${editingProduct.id}`, {
           method: "PUT",
           body: productFormData,
@@ -824,59 +820,28 @@ export function AdminDashboard() {
         );
         const updated = products.map((p) => (p.id === editingProduct.id ? updatedProduct : p));
         setProducts(updated);
-        localStorage.setItem("baraa-products", JSON.stringify(updated));
-      } catch (err) {
-        console.warn("Server update failed, updating locally:", err);
-        const updatedProduct = normalizeProductForUi({
-          ...editingProduct,
-          ...parsedPayload,
-          image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || editingProduct.image,
-          images: Array.isArray(parsedPayload.images) ? parsedPayload.images : editingProduct.images,
-        });
-        const updated = products.map((p) => (p.id === editingProduct.id ? updatedProduct : p));
-        setProducts(updated);
         try {
           localStorage.setItem("baraa-products", JSON.stringify(updated));
         } catch {}
-      }
-    } else {
-      // Create new product
-      try {
-        // expects server route POST /admin-api/protected/products
+      } else {
         const created = await fetchProtected("/products", {
           method: "POST",
           body: productFormData,
         });
-        // If server returns created product, refresh or append
-        if (created && created.id) {
-          const appended = [...products, normalizeProductForUi(created)];
-          setProducts(appended);
-          localStorage.setItem("baraa-products", JSON.stringify(appended));
-        } else {
-          // server didn't return created object; fallback to local
-          const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
-          const appended = [
-            ...products,
-            normalizeProductForUi({
-              ...parsedPayload,
-              id: newId,
-              image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || "",
-              images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
-            }),
-          ];
-          setProducts(appended);
-          localStorage.setItem("baraa-products", JSON.stringify(appended));
-        }
-      } catch (err) {
-        console.warn("Server create failed, saving locally:", err);
-        const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
         const appended = [
           ...products,
           normalizeProductForUi({
-            ...parsedPayload,
-            id: newId,
-            image: parsedPayload.images?.[parsedPayload.mainImageIndex || 0] || parsedPayload.images?.[0] || "",
-            images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
+            ...(created && created.id
+              ? created
+              : {
+                  ...parsedPayload,
+                  id: Math.max(0, ...products.map((p) => p.id)) + 1,
+                  image:
+                    parsedPayload.images?.[parsedPayload.mainImageIndex || 0] ||
+                    parsedPayload.images?.[0] ||
+                    "",
+                  images: Array.isArray(parsedPayload.images) ? parsedPayload.images : [],
+                }),
           }),
         ];
         setProducts(appended);
@@ -884,10 +849,11 @@ export function AdminDashboard() {
           localStorage.setItem("baraa-products", JSON.stringify(appended));
         } catch {}
       }
-    }
 
-    setEditingProduct(null);
-    setShowProductForm(false);
+      setEditingProduct(null);
+      setShowProductForm(false);
+    } catch (error: any) {
+      window.alert(error?.message || "Could not save product. Please try again.");
     } finally {
       setSavingProduct(false);
     }
