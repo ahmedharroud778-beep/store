@@ -1,8 +1,4 @@
 
-  # Baraa Store Website Design
-
-  This is a code bundle for Baraa Store Website Design. The original project is available at https://www.figma.com/design/nUiotdE6ZcsWazLjt3XwVR/Baraa-Store-Website-Design.
-
   ## Environment files
 
   Frontend env:
