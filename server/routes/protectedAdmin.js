@@ -50,7 +50,7 @@ function normalizeProductInput(req, fallbackProduct = null) {
   return {
     ...(fallbackProduct || {}),
     ...payload,
-    id: fallbackProduct?.id || payload.id,
+    id: fallbackProduct?.id,
     name: String(payload.name || fallbackProduct?.name || "").trim(),
     price: Number(payload.price || fallbackProduct?.price || 0),
     category: String(payload.category || fallbackProduct?.category || "").trim(),
@@ -211,7 +211,7 @@ router.delete("/categories/:id", async (req, res) => {
 router.post("/products", upload.array("images", 10), async (req, res) => {
   const products = await readProducts();
   const normalizedProduct = normalizeProductInput(req);
-  const newProduct = { id: Date.now(), ...normalizedProduct };
+  const newProduct = { ...normalizedProduct, id: Date.now() };
   products.push(newProduct);
   await writeProducts(products);
   res.json(newProduct);
