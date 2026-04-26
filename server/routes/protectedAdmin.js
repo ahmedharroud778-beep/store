@@ -1,6 +1,6 @@
 // server/routes/protectedAdmin.js
 import express from "express";
-import upload from "../lib/upload.js";
+import upload, { getUploadedFileUrls } from "../lib/upload.js";
 import {
   readCategories,
   readCustomRequests,
@@ -29,10 +29,10 @@ function parseProductPayload(req) {
   return req.body || {};
 }
 
-function normalizeProductInput(req, fallbackProduct = null) {
+async function normalizeProductInput(req, fallbackProduct = null) {
   const payload = parseProductPayload(req);
   const uploadedFiles = Array.isArray(req.files) ? req.files : [];
-  const uploadedUrls = uploadedFiles.map((file) => `/uploads/${file.filename}`);
+  const uploadedUrls = await getUploadedFileUrls(uploadedFiles);
   const remoteImages = Array.isArray(payload.images)
     ? payload.images.map((value) => String(value || "").trim()).filter(Boolean)
     : [];
@@ -210,7 +210,7 @@ router.delete("/categories/:id", async (req, res) => {
 // POST create product
 router.post("/products", upload.array("images", 10), async (req, res) => {
   const products = await readProducts();
-  const normalizedProduct = normalizeProductInput(req);
+  const normalizedProduct = await normalizeProductInput(req);
   const newProduct = { ...normalizedProduct, id: Date.now() };
   products.push(newProduct);
   await writeProducts(products);
@@ -223,7 +223,7 @@ router.put("/products/:id", upload.array("images", 10), async (req, res) => {
   const products = await readProducts();
   const idx = products.findIndex((p) => p.id === id);
   if (idx === -1) return res.status(404).json({ error: "Not found" });
-  products[idx] = normalizeProductInput(req, products[idx]);
+  products[idx] = await normalizeProductInput(req, products[idx]);
   await writeProducts(products);
   res.json(products[idx]);
 });

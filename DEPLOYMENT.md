@@ -55,9 +55,49 @@ This project is a good fit for:
 - Railway
 - any Node hosting that supports persistent filesystem access
 
+## Free hosting without persistent disk (works, with cloud services)
+
+If your host **does not** support persistent disks (or you don't have a plan), you must move data off the server:
+
+- **Database**: set `DATABASE_URL` to a hosted Postgres (Supabase / Neon free tier)
+- **Images**: set `CLOUDINARY_*` to store uploads on Cloudinary (free tier)
+
+With this setup:
+- products/orders/custom requests persist (Postgres)
+- uploaded images persist (Cloudinary)
+and redeploys won't wipe anything.
+
 ## Important note
 
-Orders and custom requests are stored in JSON files under:
+This backend stores data on disk:
+- SQLite database file (products, categories, orders, custom requests)
+- uploaded images (served from `/uploads/*`)
+
+If your host wipes filesystem data on restart/redeploy, you **must** enable persistence.
+
+### Render persistence (recommended)
+
+On Render, add a **Persistent Disk** to your web service and mount it at something like:
+
+```text
+/var/data
+```
+
+Then set these environment variables:
+
+```env
+NODE_ENV=production
+DATA_DIR=/var/data/baraa-store
+UPLOADS_DIR=/var/data/baraa-store/uploads
+# Optional (if you prefer explicit DB file path):
+# DB_PATH=/var/data/baraa-store/baraa-store.db
+```
+
+This ensures **new products, orders, and uploaded images** survive deploys/restarts.
+
+### Legacy JSON note
+
+Older versions stored orders and custom requests in JSON files under:
 
 ```text
 server/server/data/

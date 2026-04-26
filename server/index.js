@@ -1,5 +1,5 @@
 import express from "express";
-import upload, { UPLOADS_DIR } from "./lib/upload.js";
+import upload, { UPLOADS_DIR, getUploadedFileUrls, isCloudinaryEnabled } from "./lib/upload.js";
 import cors from "cors";
 import helmet from "helmet";
 import path from "path";
@@ -24,6 +24,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+// So req.protocol/secure works correctly behind Render/NGINX proxies.
+app.set("trust proxy", 1);
 app.use(cors());
 app.use(
   helmet({
@@ -43,7 +45,9 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use("/uploads", express.static(UPLOADS_DIR));
+if (!isCloudinaryEnabled()) {
+  app.use("/uploads", express.static(UPLOADS_DIR));
+}
 
 // Rate limiters for public-facing mutation endpoints
 const checkoutLimiter = rateLimit({
@@ -340,7 +344,7 @@ app.post("/api/custom-request", customRequestLimiter, upload.array("images", 5),
   }
 
   const imageFiles = req.files || [];
-  const imageUrls = imageFiles.map((file) => `/uploads/${file.filename}`);
+  const imageUrls = await getUploadedFileUrls(imageFiles);
   const customRequest = {
     id: String(Date.now()),
     createdAt: new Date().toISOString(),
@@ -382,3 +386,13 @@ if (process.env.NODE_ENV === "production") {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
+
+// Error handler (surface multer + JSON errors clearly)
+app.use((err, _req, res, _next) => {
+  const status = Number(err?.status || 500);
+  const message =
+    err?.name === "MulterError"
+      ? err.message || "Upload failed"
+      : err?.message || "Internal server error";
+  res.status(status >= 400 && status < 600 ? status : 500).json({ error: message });
+});
