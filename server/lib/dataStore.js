@@ -66,7 +66,7 @@ function getDb() {
         date TEXT,
         created_at TEXT,
         updated_at TEXT,
-        status TEXT NOT NULL DEFAULT 'completed',
+        status TEXT NOT NULL DEFAULT 'delivered',
         notes TEXT NOT NULL DEFAULT '',
         customer_json TEXT NOT NULL DEFAULT '{}',
         items_json TEXT NOT NULL DEFAULT '[]',
@@ -367,22 +367,22 @@ async function migrateJsonDataIfNeeded() {
   if (customRequests.length > 0) replaceCustomRequests(customRequests);
 }
 
-async function migrateCompletedOrdersToHistory() {
+async function migrateDeliveredOrdersToHistory() {
   const orders = await readOrders();
-  const completedOrders = orders.filter(
-    (order) => String(order?.status || "").toLowerCase() === "completed",
+  const deliveredOrders = orders.filter(
+    (order) => String(order?.status || "").toLowerCase() === "delivered",
   );
 
-  if (completedOrders.length === 0) return;
+  if (deliveredOrders.length === 0) return;
 
   const activeOrders = orders.filter(
-    (order) => String(order?.status || "").toLowerCase() !== "completed",
+    (order) => String(order?.status || "").toLowerCase() !== "delivered",
   );
 
   const history = await readOrderHistory();
   const historyIds = new Set(history.map((order) => String(order.id)));
   const mergedHistory = [
-    ...completedOrders.filter((order) => !historyIds.has(String(order.id))),
+    ...deliveredOrders.filter((order) => !historyIds.has(String(order.id))),
     ...history,
   ];
 
@@ -484,7 +484,7 @@ export async function ensureDataFiles() {
         date TEXT,
         created_at TEXT,
         updated_at TEXT,
-        status TEXT NOT NULL DEFAULT 'completed',
+        status TEXT NOT NULL DEFAULT 'delivered',
         notes TEXT NOT NULL DEFAULT '',
         customer_json TEXT NOT NULL DEFAULT '{}',
         items_json TEXT NOT NULL DEFAULT '[]',
@@ -512,7 +512,7 @@ export async function ensureDataFiles() {
   getDb();
   await migrateJsonDataIfNeeded();
   await migrateCategoriesFromProductsIfNeeded();
-  await migrateCompletedOrdersToHistory();
+  await migrateDeliveredOrdersToHistory();
 }
 
 export async function readProducts() {

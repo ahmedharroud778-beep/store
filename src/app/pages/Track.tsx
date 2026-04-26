@@ -85,9 +85,9 @@ function findStoredOrder(orderId: string) {
 
 function formatStatus(status?: string) {
   const normalized = String(status || "new").toLowerCase();
-  if (normalized === "contacted") return "Contacted";
-  if (normalized === "confirmed") return "Confirmed";
-  if (normalized === "completed") return "Completed";
+  if (normalized === "under_preparation") return "Under preparation";
+  if (normalized === "on_the_way") return "On the way";
+  if (normalized === "delivered") return "Delivered";
   if (normalized === "canceled") return "Canceled";
   return "New";
 }

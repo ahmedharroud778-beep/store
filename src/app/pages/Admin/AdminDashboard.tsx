@@ -113,18 +113,18 @@ function escapeHtml(value: string) {
 function getStatusBadgeClass(status?: string) {
   const normalized = String(status || "new").toLowerCase();
 
-  if (normalized === "contacted") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-  if (normalized === "confirmed") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-  if (normalized === "completed") return "bg-secondary/10 text-secondary border-secondary/20";
+  if (normalized === "under_preparation") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
+  if (normalized === "on_the_way") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+  if (normalized === "delivered") return "bg-secondary/10 text-secondary border-secondary/20";
   if (normalized === "canceled") return "bg-destructive/10 text-destructive border-destructive/20";
   return "bg-amber-500/10 text-amber-700 border-amber-500/20";
 }
 
 function getStatusLabel(status?: string) {
   const normalized = String(status || "new").toLowerCase();
-  if (normalized === "contacted") return "Contacted";
-  if (normalized === "confirmed") return "Confirmed";
-  if (normalized === "completed") return "Completed";
+  if (normalized === "under_preparation") return "Under preparation";
+  if (normalized === "on_the_way") return "On the way";
+  if (normalized === "delivered") return "Delivered";
   if (normalized === "canceled") return "Canceled";
   return "New";
 }
@@ -213,7 +213,7 @@ export function AdminDashboard() {
   const [productChildSection, setProductChildSection] = useState("");
   const [ordersView, setOrdersView] = useState<"active" | "history">("active");
   const [activeOrdersFilter, setActiveOrdersFilter] = useState<
-    "all" | "new" | "contacted" | "confirmed" | "canceled"
+    "all" | "new" | "under_preparation" | "on_the_way" | "canceled"
   >("all");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [customRequestsFilter, setCustomRequestsFilter] = useState<
@@ -221,7 +221,9 @@ export function AdminDashboard() {
   >("all");
   const [customRequestSearchQuery, setCustomRequestSearchQuery] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-  const [bulkOrderStatus, setBulkOrderStatus] = useState<"contacted" | "confirmed" | "canceled" | "completed">("contacted");
+  const [bulkOrderStatus, setBulkOrderStatus] = useState<
+    "under_preparation" | "on_the_way" | "canceled" | "delivered"
+  >("under_preparation");
   const [analyticsRangeDays, setAnalyticsRangeDays] = useState<7 | 14 | 30>(7);
   const [ordersDateFrom, setOrdersDateFrom] = useState("");
   const [ordersDateTo, setOrdersDateTo] = useState("");
@@ -460,12 +462,12 @@ export function AdminDashboard() {
       console.warn("Server order update failed, updating locally:", err);
       const normalizedStatus = String(updates.status || "").toLowerCase();
 
-      if (normalizedStatus === "completed") {
-        const completedOrder = orders.find((order) => order.id === orderId);
-        if (!completedOrder) return;
+      if (normalizedStatus === "delivered") {
+        const deliveredOrder = orders.find((order) => order.id === orderId);
+        if (!deliveredOrder) return;
 
         const movedOrder = {
-          ...completedOrder,
+          ...deliveredOrder,
           ...updates,
         };
         const updatedOrders = orders.filter((order) => order.id !== orderId);
@@ -543,13 +545,13 @@ export function AdminDashboard() {
       console.warn("Bulk order update partially failed, applying local fallback:", err);
     }
 
-    if (bulkOrderStatus === "completed") {
-      const completedOrders = activeSelectedOrders.map((order) =>
-        normalizeOrder({ ...order, status: "completed", updatedAt: nextTimestamp }),
+    if (bulkOrderStatus === "delivered") {
+      const deliveredOrders = activeSelectedOrders.map((order) =>
+        normalizeOrder({ ...order, status: "delivered", updatedAt: nextTimestamp }),
       );
       const updatedOrders = orders.filter((order) => !selectedIdSet.has(order.id));
       const updatedHistory = [
-        ...completedOrders,
+        ...deliveredOrders,
         ...orderHistory.filter((order) => !selectedIdSet.has(order.id)),
       ];
       setOrders(updatedOrders);
@@ -912,7 +914,7 @@ export function AdminDashboard() {
       activeCount: orders.length,
       historyCount: orderHistory.length,
       newCount: orders.filter((order) => String(order.status || "new").toLowerCase() === "new").length,
-      confirmedCount: orders.filter((order) => String(order.status || "").toLowerCase() === "confirmed").length,
+      onTheWayCount: orders.filter((order) => String(order.status || "").toLowerCase() === "on_the_way").length,
       activeRevenue,
       historyRevenue,
     };
@@ -1151,7 +1153,7 @@ export function AdminDashboard() {
 
     return orders.filter((order) => {
       const status = String(order.status || "new").toLowerCase();
-      if (status !== "new" && status !== "contacted") return false;
+      if (status !== "new" && status !== "under_preparation") return false;
 
       const orderDate = getOrderDateValue(order);
       return Boolean(orderDate && orderDate >= startOfToday);

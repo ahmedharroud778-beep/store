@@ -320,7 +320,7 @@ router.put("/orders/:id", async (req, res) => {
     updatedAt: new Date().toISOString(),
   };
 
-  if (String(updatedOrder.status).toLowerCase() === "completed") {
+  if (String(updatedOrder.status).toLowerCase() === "delivered") {
     const history = await readOrderHistory();
     const filteredOrders = orders.filter((order) => String(order.id) !== String(req.params.id));
     await writeOrders(filteredOrders);

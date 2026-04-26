@@ -35,7 +35,7 @@ interface OrderMetrics {
   activeCount: number;
   historyCount: number;
   newCount: number;
-  confirmedCount: number;
+  onTheWayCount: number;
   activeRevenue: number;
   historyRevenue: number;
 }
@@ -47,8 +47,8 @@ interface Props {
   visibleOrderHistory: Order[];
   ordersView: "active" | "history";
   setOrdersView: (v: "active" | "history") => void;
-  activeOrdersFilter: "all" | "new" | "contacted" | "confirmed" | "canceled";
-  setActiveOrdersFilter: (v: "all" | "new" | "contacted" | "confirmed" | "canceled") => void;
+  activeOrdersFilter: "all" | "new" | "under_preparation" | "on_the_way" | "canceled";
+  setActiveOrdersFilter: (v: "all" | "new" | "under_preparation" | "on_the_way" | "canceled") => void;
   orderSearchQuery: string;
   setOrderSearchQuery: (v: string) => void;
   ordersDateFrom: string;
@@ -57,8 +57,8 @@ interface Props {
   setOrdersDateTo: (v: string) => void;
   clearOrdersDateRange: () => void;
   selectedOrderIds: string[];
-  bulkOrderStatus: "contacted" | "confirmed" | "canceled" | "completed";
-  setBulkOrderStatus: (v: "contacted" | "confirmed" | "canceled" | "completed") => void;
+  bulkOrderStatus: "under_preparation" | "on_the_way" | "canceled" | "delivered";
+  setBulkOrderStatus: (v: "under_preparation" | "on_the_way" | "canceled" | "delivered") => void;
   analyticsRangeDays: 7 | 14 | 30;
   setAnalyticsRangeDays: (v: 7 | 14 | 30) => void;
   analytics: AnalyticsData;
@@ -89,18 +89,18 @@ function formatDateTime(value?: string) {
 
 function getStatusBadgeClass(status?: string) {
   const n = String(status || "new").toLowerCase();
-  if (n === "contacted") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-  if (n === "confirmed") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-  if (n === "completed") return "bg-secondary/10 text-secondary border-secondary/20";
+  if (n === "under_preparation") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
+  if (n === "on_the_way") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+  if (n === "delivered") return "bg-secondary/10 text-secondary border-secondary/20";
   if (n === "canceled") return "bg-destructive/10 text-destructive border-destructive/20";
   return "bg-amber-500/10 text-amber-700 border-amber-500/20";
 }
 
 function getStatusLabel(status?: string) {
   const n = String(status || "new").toLowerCase();
-  if (n === "contacted") return "Contacted";
-  if (n === "confirmed") return "Confirmed";
-  if (n === "completed") return "Completed";
+  if (n === "under_preparation") return "Under preparation";
+  if (n === "on_the_way") return "On the way";
+  if (n === "delivered") return "Delivered";
   if (n === "canceled") return "Canceled";
   return "New";
 }
@@ -148,9 +148,9 @@ export function AdminOrdersPanel({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {[
           { label: "Active Orders", value: orderMetrics.activeCount, sub: `${orderMetrics.newCount} new orders need review`, Icon: ClipboardList },
-          { label: "Confirmed Orders", value: orderMetrics.confirmedCount, sub: "Ready for delivery follow-up", Icon: ChartColumn },
+          { label: "On the way", value: orderMetrics.onTheWayCount, sub: "Orders currently out for delivery", Icon: ChartColumn },
           { label: "Open Pipeline Value", value: formatCurrency(orderMetrics.activeRevenue), sub: "From currently active orders", Icon: ShoppingCart },
-          { label: "Completed Revenue", value: formatCurrency(orderMetrics.historyRevenue), sub: `${orderMetrics.historyCount} orders in history`, Icon: Archive },
+          { label: "Delivered Revenue", value: formatCurrency(orderMetrics.historyRevenue), sub: `${orderMetrics.historyCount} orders in history`, Icon: Archive },
         ].map(({ label, value, sub, Icon }) => (
           <div key={label} className="bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
@@ -170,7 +170,7 @@ export function AdminOrdersPanel({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-medium">Sales Snapshot</h3>
-              <p className="text-sm text-muted-foreground">Track store performance across active and completed orders</p>
+              <p className="text-sm text-muted-foreground">Track store performance across active and delivered orders</p>
             </div>
             <ChartColumn className="w-5 h-5 text-primary" />
           </div>
@@ -239,7 +239,7 @@ export function AdminOrdersPanel({
             <Package className="w-5 h-5 text-primary" />
           </div>
           {todayQueue.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No new or contacted orders were created today.</p>
+            <p className="text-sm text-muted-foreground">No new or under-preparation orders were created today.</p>
           ) : (
             <div className="space-y-3">
               {todayQueue.slice(0, 5).map((order) => (
@@ -361,12 +361,18 @@ export function AdminOrdersPanel({
       {ordersView === "active" && (
         <div className="mb-6 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            {(["all", "new", "contacted", "confirmed", "canceled"] as const).map((f) => (
+            {(["all", "new", "under_preparation", "on_the_way", "canceled"] as const).map((f) => (
               <button key={f} onClick={() => setActiveOrdersFilter(f)}
                 className={`px-4 py-2 rounded-full text-sm transition-all capitalize ${
                   activeOrdersFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"
                 }`}>
-                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === "all"
+                  ? "All"
+                  : f === "under_preparation"
+                    ? "Under preparation"
+                    : f === "on_the_way"
+                      ? "On the way"
+                      : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
@@ -383,10 +389,10 @@ export function AdminOrdersPanel({
               <div className="flex-1 text-sm text-muted-foreground">{selectedOrderIds.length} selected</div>
               <select value={bulkOrderStatus} onChange={(e) => setBulkOrderStatus(e.target.value as typeof bulkOrderStatus)}
                 className="px-3 py-2 bg-input-background rounded-lg border border-border text-sm">
-                <option value="contacted">Mark as Contacted</option>
-                <option value="confirmed">Mark as Confirmed</option>
+                <option value="under_preparation">Mark as Under preparation</option>
+                <option value="on_the_way">Mark as On the way</option>
                 <option value="canceled">Mark as Canceled</option>
-                <option value="completed">Mark as Completed</option>
+                <option value="delivered">Mark as Delivered</option>
               </select>
               <button type="button" onClick={onBulkUpdateOrders} disabled={selectedOrderIds.length === 0}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed">
@@ -418,7 +424,7 @@ export function AdminOrdersPanel({
                 ? activeOrdersFilter === "all"
                   ? t("admin.noOrders")
                   : `No ${activeOrdersFilter} orders right now`
-                : "No completed orders in history yet"}
+                : "No delivered orders in history yet"}
           </p>
         </div>
       ) : (
@@ -435,7 +441,7 @@ export function AdminOrdersPanel({
                     <p className="text-sm text-muted-foreground">Order #{order.id}</p>
                     <p className="text-sm text-muted-foreground">{formatDateTime(order.createdAt || order.date)}</p>
                     <div className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-sm ${getStatusBadgeClass(order.status)}`}>
-                      {ordersView === "active" ? getStatusLabel(order.status) : "Completed"}
+                      {ordersView === "active" ? getStatusLabel(order.status) : "Delivered"}
                     </div>
                     {ordersView === "active" && (
                       <div className="mt-2">
@@ -443,10 +449,10 @@ export function AdminOrdersPanel({
                           onChange={(e) => onUpdateOrder(order.id, { status: e.target.value, notes: order.notes || "" })}
                           className="px-3 py-2 bg-input-background rounded-lg border border-border text-sm">
                           <option value="new">New</option>
-                          <option value="contacted">Contacted</option>
-                          <option value="confirmed">Confirmed</option>
+                          <option value="under_preparation">Under preparation</option>
+                          <option value="on_the_way">On the way</option>
                           <option value="canceled">Canceled</option>
-                          <option value="completed">Completed</option>
+                          <option value="delivered">Delivered</option>
                         </select>
                       </div>
                     )}
